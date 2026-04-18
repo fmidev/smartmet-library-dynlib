@@ -3,14 +3,6 @@
   "css": "weather_objects.css",
   "objects": [
     {
-      "type": "fronts",
-      "producer": "ecmwf",
-      "field": "PotentialTemperature",
-      "u": "WindUMS",
-      "v": "WindVMS",
-      "smoothing_passes": 3
-    },
-    {
       "type": "jet_axes",
       "producer": "ecmwf",
       "u": "WindUMS",
