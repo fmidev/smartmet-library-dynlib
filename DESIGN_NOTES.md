@@ -155,6 +155,98 @@ rely on `intent(out)` pre-fill semantics, (b) patching upstream
 `line_locate` to declare its buffers `intent(inout)`, or (c) porting
 the numerics to C++ as originally considered.
 
+## Post-mortem: on-the-fly front detection is not chart-quality
+
+Written 2026-04-18 evening after a day validating the newly wired
+detectors against a real ECMWF forecast (`europe_pressurelevels_12utc.sqd`,
+three consecutive 12 UTC noons, ~0.25° rotated lat/lon) and the FMI
+meteorologist analysis `2026041812_eu_analyysi_fi.png`.
+
+### What we tried
+
+1. **Dry potential temperature θ at 850 hPa** as the scalar input to
+   `detectFrontsMaxGrad`. 57–80 front lines per timestep on the
+   European domain, visibly far noisier than the analysis chart.
+2. **Smoothing passes 3 → 8 and positive `|∇θ|` intensity threshold
+   of 1.5e-5 K/m** to filter weak gradient zones (upstream defaults
+   are tuned for ERA-Interim's ~1.5° grid and are too permissive at
+   0.25°). Line count dropped to ~20–35 per timestep but the curves
+   stayed wriggly.
+3. **Bolton (1980) θe derived from T + RH** (the stored
+   `PseudoAdiabaticPotentialTemperature` field in the test file is
+   100 % NaN). θe has sharper frontal gradients, so line positions
+   shifted and a few Mediterranean moisture-driven frontal zones that
+   θ missed came through. Overall shape and noise character were
+   unchanged.
+
+### What did not work and why
+
+None of the tuning steps produced output qualitatively comparable to
+the forecaster chart. The gap is structural, not a parameter-tuning
+problem:
+
+- **Definition mismatch.** A meteorologist integrates 4–6 fields
+  (θe, SLP, wind, satellite imagery, the previous chart) plus
+  continuity reasoning and draws a single smooth curve per front.
+  `detectFrontsMaxGrad` finds zero crossings of ∇²(field) on the
+  grid — per-cell discretisation of a second derivative, guaranteed
+  to be noisy.
+- **No temporal continuity.** The upstream detector has no tracking
+  or persistence filter. A real forecaster carries the previous
+  chart forward; the algorithm sees each timestep in isolation.
+- **Fronts are a forecaster convention.** Unlike jet axes (defined
+  by zero shear), blocking (gradient reversal), cyclones (closed
+  contours), and troughs (relative vorticity maxima) — which have
+  objective physical criteria — a "front" is partly what the
+  forecaster says it is. No algorithm will perfectly reproduce a
+  chart built on partly-subjective criteria.
+- **Independent evidence.** Every automatic frontal-analysis product
+  surveyed on the web has the same character: either noisier than a
+  hand-drawn chart (classical algorithms like dynlib, DWD Hewson,
+  Parfitt F) or requires ML (Biard & Kunkel 2019, Niebler 2022,
+  Justin 2023) trained on thousands of labelled charts. The research
+  consensus since ~2019 is that ML is the direction forward for
+  chart-quality front detection.
+
+### Decision
+
+On-the-fly computed fronts are **not advertised** as a SmartMet
+Server feature. The library keeps the front-detection entry points
+because they are useful as inputs to downstream physical diagnostics
+(conveyor belts, frontogenesis rate, moisture transport along baroclinic
+zones) and for research workflows where gradient-based detection is
+an acceptable proxy. Chart-quality fronts should come from:
+
+1. A precomputed external product (database-backed or file-backed),
+   produced either by an ML model or by a tuned classical pipeline
+   with post-processing (line stitching, length filtering, temporal
+   persistence). Served as gridded data or line features via the
+   normal SmartMet product path.
+2. Not a per-request calculation. Fronts change on synoptic
+   timescales (hours), not query timescales.
+
+The `FrontSource` abstraction in the WMS plugin remains a reasonable
+extension point — add a `DatabaseFrontSource` or
+`PrecomputedFrontSource` next to the existing `GridFrontSource`.
+
+### What survives
+
+The other detectors remain in scope for on-the-fly serving via the
+WMS plugin:
+
+- **Jet axes** (`detectJetAxes`, `detectJetAxesFFThres`) — zero-shear
+  lines, unambiguous physical definition.
+- **Blocking indicator** — a scalar field handed to the existing
+  isoband renderer.
+- **Trough axes** (vorticity-line alias) — cyclonic-vorticity maxima.
+- **Convergence / deformation lines** — well-defined wind diagnostics.
+- **Cyclone detection** — closed-contour SLP minima with area filter.
+- **RWB gradient reversal** — grid-cell flags, renders as a heatmap.
+- **Precipitation blobs** — closed-contour precipitation maxima.
+
+These all produce output that is meaningful directly, without needing
+to match a forecaster's subjective line work.
+
 ## Deferred
 - **Caching.** Each `WeatherObjectsLayer::generate` re-fetches grid
   data and re-runs detection every render. For animations this is

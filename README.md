@@ -11,14 +11,32 @@ namespace.
 
 ## Current scope
 
-- Front detection, Jenkner et al. (2010) max-gradient method: `detectFrontsMaxGrad`
+All entry points live in `Fmi::Dynlib`.
 
-Further detection algorithms already present in the vendored Fortran
-(front max-curv, jet axis, convergence / deformation / vorticity lines,
-cyclone-by-contour, blocking indicator, Rossby wave breaking, precipitation
-blobs) will be exposed incrementally via the same pattern: add a bind(c)
-subroutine in `dynlib_wrapper.f90`, a declaration in `DynlibC.h`, a C++
-overload in `Dynlib.h`.
+| Detector                           | Function(s)                                              |
+|------------------------------------|----------------------------------------------------------|
+| Jet axes (zero-shear)              | `detectJetAxes`, `detectJetAxesFFThres` (30 m/s cutoff)  |
+| Blocking indicator (Masato 2012)   | `blockingIndicator`                                      |
+| Trough axes / vorticity lines      | `detectTroughAxes`, `detectVorticityLines`               |
+| Convergence / deformation lines    | `detectConvergenceLines`, `detectDeformationLines`       |
+| Cyclones (Wernli & Schwierz)       | `detectCyclonesByContour`                                |
+| Rossby wave breaking               | `detectRossbyWaveBreakingGradRev`                        |
+| Precipitation blobs                | `detectPrecipitationBlobs`                               |
+| Fronts (gradient / curvature)      | `detectFrontsMaxGrad`, `detectFrontsMaxCurv`             |
+
+### Caveat on front detection
+
+`detectFrontsMaxGrad` and `detectFrontsMaxCurv` produce gradient-based
+line output that does **not** match meteorologist-drawn frontal
+analysis closely enough for operational chart-quality use. They remain
+in the library as inputs to downstream diagnostics and for research
+workflows. Do not advertise them as a ready-to-use product. See
+`DESIGN_NOTES.md` for the validation experiment and the conclusion
+that chart-quality fronts should come from a precomputed external
+source (ML-trained or a tuned classical pipeline with post-processing).
+
+The other detectors above use objective physical criteria and produce
+output that is meaningful to serve directly.
 
 ## Build
 
