@@ -19,6 +19,7 @@ URL: https://github.com/fmidev/smartmet-library-dynlib
 Source0: %{name}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
+BuildRequires: %{smartmet_boost}-devel
 BuildRequires: gcc-c++
 BuildRequires: gcc-gfortran
 BuildRequires: lapack-devel
@@ -27,19 +28,14 @@ BuildRequires: rpm-build
 BuildRequires: smartmet-library-macgyver-devel
 BuildRequires: smartmet-utils-devel >= 26.2.4
 
-# `ci-build testprep` uncomments these TestRequires lines and installs
-# the packages before running `ci-build test`. Tests are not executed
-# during the RPM build itself (see `%bcond_with tests`), so these
-# dependencies are intentionally out-of-band from BuildRequires.
+Requires: blas
+Requires: lapack
+Requires: libgfortran
 #TestRequires: %{smartmet_boost}-devel
 #TestRequires: gcc-c++
 #TestRequires: gcc-gfortran
 #TestRequires: make
 #TestRequires: smartmet-library-macgyver-devel
-
-Requires: blas
-Requires: lapack
-Requires: libgfortran
 
 Provides: %{SPECNAME}
 
