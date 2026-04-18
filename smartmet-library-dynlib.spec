@@ -3,6 +3,12 @@
 %define LIBNAME smartmet-%{DIRNAME}
 %define SPECNAME smartmet-library-%{DIRNAME}
 
+%if 0%{?rhel} && 0%{rhel} < 9
+%define smartmet_boost boost169
+%else
+%define smartmet_boost boost
+%endif
+
 Summary: dynamic-meteorology feature detection for SmartMet
 Name: %{SPECNAME}
 Version: 26.4.17
@@ -20,6 +26,16 @@ BuildRequires: make
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-macgyver-devel
 BuildRequires: smartmet-utils-devel >= 26.2.4
+
+# `ci-build testprep` uncomments these TestRequires lines and installs
+# the packages before running `ci-build test`. Tests are not executed
+# during the RPM build itself (see `%bcond_with tests`), so these
+# dependencies are intentionally out-of-band from BuildRequires.
+#TestRequires: %{smartmet_boost}-devel
+#TestRequires: gcc-c++
+#TestRequires: gcc-gfortran
+#TestRequires: make
+#TestRequires: smartmet-library-macgyver-devel
 
 Requires: blas
 Requires: lapack
