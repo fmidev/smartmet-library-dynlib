@@ -1,0 +1,48 @@
+dynlib — diagnostics and feature-detection routines for dynamic meteorology
+==============================================================================
+
+Upstream
+--------
+Project:   dynlib
+Author:    Clemens Spensberger, University of Bergen
+Homepage:  https://git.app.uib.no/Clemens.Spensberger/dynlib
+License:   MIT (see LICENSE in this directory)
+
+Vendored snapshot
+-----------------
+Source:    git.app.uib.no/Clemens.Spensberger/dynlib.git
+Branch:    master
+Commit:    cc4fc9ead09e46cd7cf0744cc1d075de096fd66f
+Date:      fetched 2026-04-17
+
+Vendored subset
+---------------
+Only the minimal set of Fortran modules needed for feature detection is
+vendored. The Python wrapper, f2py signature files, netCDF helpers,
+plotting utilities, spectral (SPHEREPACK) analysis and unused modules
+(tend, diag_tend, ellipse, interpol, stat, sphere, thermodyn) are not
+included.
+
+  kind.f90                 type kind parameters
+  const.f90                physical constants (needs -fno-range-check)
+  config.f90               module-level thresholds
+  derivatives.f90          finite-difference spatial derivatives
+  diag.f90                 diagnostics (requires LAPACK: dsytrd/dsteqr/dorgtr)
+  detect_rwb_contour.f90   Rossby wave breaking, contour method
+  detect_lines.f90         line-tracking primitives
+  utils.f90                smoothing and helpers
+  detect.f90               all feature-detection subroutines
+
+Local changes
+-------------
+None. Files are verbatim copies of the upstream snapshot. The ISO_C_BINDING
+shim and all C/C++ wrapper code live under ../../dynlib/ and are not part
+of upstream.
+
+Refresh procedure
+-----------------
+git clone https://git.app.uib.no/Clemens.Spensberger/dynlib.git /tmp/dynlib
+cp /tmp/dynlib/lib/fortran/{kind,const,config,derivatives,diag,detect_rwb_contour,detect_lines,utils,detect}.f90 ./
+cp /tmp/dynlib/LICENSE ./
+# Update the Commit and Date fields above
+# Rerun make test to confirm no ABI or numerical regression

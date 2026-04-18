@@ -1,0 +1,33 @@
+{
+  "layer_type": "weather_objects",
+  "css": "weather_objects.css",
+  "objects": [
+    {
+      "type": "fronts",
+      "producer": "ecmwf",
+      "field": "PotentialTemperature",
+      "u": "WindUMS",
+      "v": "WindVMS",
+      "smoothing_passes": 3
+    },
+    {
+      "type": "jet_axes",
+      "producer": "ecmwf",
+      "u": "WindUMS",
+      "v": "WindVMS",
+      "smoothing_passes": 2
+    },
+    {
+      "type": "trough_axes",
+      "producer": "ecmwf",
+      "u": "WindUMS",
+      "v": "WindVMS"
+    },
+    {
+      "type": "convergence_lines",
+      "producer": "ecmwf",
+      "u": "WindUMS",
+      "v": "WindVMS"
+    }
+  ]
+}

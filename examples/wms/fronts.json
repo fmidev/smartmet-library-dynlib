@@ -1,0 +1,14 @@
+{
+  "layer_type": "fronts",
+  "front_source": "grid",
+  "fronts": {
+    "producer": "ecmwf",
+    "field": "PotentialTemperature",
+    "u": "WindUMS",
+    "v": "WindVMS",
+    "level": 850,
+    "smoothing_passes": 3,
+    "speed_threshold": 1.5,
+    "method": "maxgrad"
+  }
+}

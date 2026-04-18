@@ -1,0 +1,13 @@
+obj/
+*.o
+*.mod
+*.so
+*.a
+*.tar.gz
+*.rpm
+test/failures/
+compile_commands.json
+examples/demo
+examples/*.png
+examples/*.svg
+test/DynlibTest
