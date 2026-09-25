@@ -67,3 +67,7 @@ All C++ inputs are `Fmi::Matrix<double>(nx, ny)` in standard row-major
 order (x-index innermost). The Fortran shim transposes internally
 because upstream dynlib subroutines declare fields as `dat(nz, ny, nx)`.
 The transpose cost is negligible relative to the detection work.
+
+## Documentation
+
+- [Developer guide](docs/developer-guide.md): code layers, arrays, configuration and threads, updating upstream
