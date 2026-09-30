@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 
@@ -15,6 +16,16 @@ namespace
 {
 constexpr double kEarthRadius = 6371000.0;
 constexpr double kPi = 3.14159265358979323846;
+
+// The Fortran detectors keep their thresholds and smoothing settings in
+// module-level variables that every call resets and overrides, and the
+// upstream code is not thread safe in general. All calls into Fortran are
+// therefore serialized.
+std::mutex& fortran_mutex()
+{
+  static std::mutex mutex;
+  return mutex;
+}
 
 void checkSameShape(const Fmi::Matrix<double>& a,
                     const Fmi::Matrix<double>& b,
@@ -145,13 +156,16 @@ std::vector<FrontLine> detectFrontsMaxGrad(const Fmi::Matrix<double>& field,
   std::vector<double> pts(static_cast<std::size_t>(3) * no * 3);
   std::vector<double> off(static_cast<std::size_t>(3) * nf);
 
-  dynlib_detect_fronts_maxgrad(nx, ny, no, nf,
-                               &field(0, 0), &u(0, 0), &v(0, 0),
-                               &dx(0, 0), &dy(0, 0),
-                               pts.data(), off.data(),
-                               options.intensity_threshold,
-                               options.speed_threshold,
-                               options.smoothing_passes);
+  {
+    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    dynlib_detect_fronts_maxgrad(nx, ny, no, nf,
+                                 &field(0, 0), &u(0, 0), &v(0, 0),
+                                 &dx(0, 0), &dy(0, 0),
+                                 pts.data(), off.data(),
+                                 options.intensity_threshold,
+                                 options.speed_threshold,
+                                 options.smoothing_passes);
+  }
 
   return decodeTypedFronts(off.data(), pts.data(), nf, no);
 }
@@ -173,13 +187,16 @@ std::vector<FrontLine> detectFrontsMaxCurv(const Fmi::Matrix<double>& field,
   std::vector<double> pts(static_cast<std::size_t>(3) * no * 3);
   std::vector<double> off(static_cast<std::size_t>(3) * nf);
 
-  dynlib_detect_fronts_maxcurv(nx, ny, no, nf,
-                               &field(0, 0), &u(0, 0), &v(0, 0),
-                               &dx(0, 0), &dy(0, 0),
-                               pts.data(), off.data(),
-                               options.intensity_threshold,
-                               options.speed_threshold,
-                               options.smoothing_passes);
+  {
+    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    dynlib_detect_fronts_maxcurv(nx, ny, no, nf,
+                                 &field(0, 0), &u(0, 0), &v(0, 0),
+                                 &dx(0, 0), &dy(0, 0),
+                                 pts.data(), off.data(),
+                                 options.intensity_threshold,
+                                 options.speed_threshold,
+                                 options.smoothing_passes);
+  }
 
   return decodeTypedFronts(off.data(), pts.data(), nf, no);
 }
@@ -209,6 +226,7 @@ std::vector<LineFeature> runLineDetector(int32_t kind_code,
   std::vector<double> pts(static_cast<std::size_t>(no) * 3);
   std::vector<double> off(static_cast<std::size_t>(nf));
 
+  std::unique_lock<std::mutex> lock(fortran_mutex());
   if (kind_code == 0 || kind_code == 4)
   {
     const int32_t variant = (kind_code == 4 ? 1 : 0);
@@ -220,6 +238,7 @@ std::vector<LineFeature> runLineDetector(int32_t kind_code,
     dynlib_detect_lines(kind_code, nx, ny, no, nf,
                         &u(0, 0), &v(0, 0), &dx(0, 0), &dy(0, 0),
                         pts.data(), off.data(), options.smoothing_passes);
+  lock.unlock();
 
   return decodeLines(off.data(), pts.data(), nf, no);
 }
@@ -314,17 +333,20 @@ RwbResult detectRossbyWaveBreakingGradRev(const Fmi::Matrix<double>& field,
 
   const double* mask_ptr = (mask != nullptr ? &(*mask)(0, 0) : &mask_all(0, 0));
 
-  dynlib_detect_rwb_grad_rev(nx, ny,
-                             &field(0, 0), mask_ptr, latitudes.data(),
-                             options.ddy_thres,
-                             &dx(0, 0), &dy(0, 0),
-                             &out.anticyclonic_flag(0, 0),
-                             &out.cyclonic_flag(0, 0),
-                             &out.anticyclonic_gradmag(0, 0),
-                             &out.cyclonic_gradmag(0, 0),
-                             &out.anticyclonic_dfield_dy(0, 0),
-                             &out.cyclonic_dfield_dy(0, 0),
-                             &out.tested(0, 0));
+  {
+    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    dynlib_detect_rwb_grad_rev(nx, ny,
+                               &field(0, 0), mask_ptr, latitudes.data(),
+                               options.ddy_thres,
+                               &dx(0, 0), &dy(0, 0),
+                               &out.anticyclonic_flag(0, 0),
+                               &out.cyclonic_flag(0, 0),
+                               &out.anticyclonic_gradmag(0, 0),
+                               &out.cyclonic_gradmag(0, 0),
+                               &out.anticyclonic_dfield_dy(0, 0),
+                               &out.cyclonic_dfield_dy(0, 0),
+                               &out.tested(0, 0));
+  }
   return out;
 }
 
@@ -408,22 +430,25 @@ CycloneResult detectCyclonesByContour(const Fmi::Matrix<double>& msl,
   out.mask = Fmi::Matrix<double>(nx, ny);
   std::vector<double> meta(static_cast<std::size_t>(5) * static_cast<std::size_t>(nn), 0.0);
 
-  dynlib_detect_cyclones(nx, ny, nn,
-                         &msl(0, 0),
-                         sorted.sorted_values.data(),
-                         sorted.iis.data(),
-                         sorted.jjs.data(),
-                         &orography(0, 0),
-                         longitudes.data(),
-                         latitudes.data(),
-                         &dx(0, 0), &dy(0, 0),
-                         options.min_size_km2,
-                         options.max_size_km2,
-                         options.max_orography_m,
-                         options.min_distance_km,
-                         options.min_prominence,
-                         &out.mask(0, 0),
-                         meta.data());
+  {
+    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    dynlib_detect_cyclones(nx, ny, nn,
+                           &msl(0, 0),
+                           sorted.sorted_values.data(),
+                           sorted.iis.data(),
+                           sorted.jjs.data(),
+                           &orography(0, 0),
+                           longitudes.data(),
+                           latitudes.data(),
+                           &dx(0, 0), &dy(0, 0),
+                           options.min_size_km2,
+                           options.max_size_km2,
+                           options.max_orography_m,
+                           options.min_distance_km,
+                           options.min_prominence,
+                           &out.mask(0, 0),
+                           meta.data());
+  }
 
   for (int32_t m = 0; m < nn; ++m)
   {
@@ -475,17 +500,20 @@ BlobResult detectPrecipitationBlobs(const Fmi::Matrix<double>& precip,
   out.mask = Fmi::Matrix<double>(nx, ny);
   std::vector<double> meta(static_cast<std::size_t>(5) * static_cast<std::size_t>(nn), 0.0);
 
-  dynlib_detect_blobs(nx, ny, nn,
-                      &precip(0, 0),
-                      sorted.sorted_values.data(),
-                      sorted.iis.data(),
-                      sorted.jjs.data(),
-                      longitudes.data(),
-                      latitudes.data(),
-                      &dx(0, 0), &dy(0, 0),
-                      options.min_distance_km,
-                      &out.mask(0, 0),
-                      meta.data());
+  {
+    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    dynlib_detect_blobs(nx, ny, nn,
+                        &precip(0, 0),
+                        sorted.sorted_values.data(),
+                        sorted.iis.data(),
+                        sorted.jjs.data(),
+                        longitudes.data(),
+                        latitudes.data(),
+                        &dx(0, 0), &dy(0, 0),
+                        options.min_distance_km,
+                        &out.mask(0, 0),
+                        meta.data());
+  }
 
   for (int32_t m = 0; m < nn; ++m)
   {
@@ -514,9 +542,12 @@ Fmi::Matrix<double> blockingIndicator(const Fmi::Matrix<double>& field,
   auto [nx, ny] = checkAndGetDims(field, peers, names, 2);
 
   Fmi::Matrix<double> out(nx, ny);
-  dynlib_block_indicator(nx, ny,
-                         &field(0, 0), &dx(0, 0), &dy(0, 0),
-                         &out(0, 0));
+  {
+    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    dynlib_block_indicator(nx, ny,
+                           &field(0, 0), &dx(0, 0), &dy(0, 0),
+                           &out(0, 0));
+  }
   return out;
 }
 
