@@ -11,7 +11,7 @@
 
 Summary: dynamic-meteorology feature detection for SmartMet
 Name: %{SPECNAME}
-Version: 26.4.17
+Version: 26.10.3
 Release: 1%{?dist}.fmi
 License: MIT
 Group: Development/Libraries
@@ -87,6 +87,9 @@ Headers and development files for smartmet-library-dynlib.
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sat Oct 03 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.3-1.fmi
+- Serialize calls into the Fortran detectors
+
 * Fri Apr 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.4.17-1.fmi
 - Initial packaging: vendored dynlib Fortran sources plus ISO_C_BINDING
   shim, exposing Jenkner-style maximum-gradient front detection to
