@@ -58,10 +58,10 @@ The upstream detectors read their thresholds and smoothing from Fortran **module
 variables** (`config.f90`). The shim's `apply_config()` resets them to the defaults and
 applies the caller's overrides at the start of every call.
 
-Module variables are process-wide. **Concurrent detections with different options
-interfere**: one call can reset or override the thresholds while another is running. Until
-the options are passed as arguments, serialise the calls that override thresholds, or keep
-all concurrent callers on the same options.
+Module variables are process-wide, so the C++ API serialises all calls into Fortran with
+one mutex: each detection runs with the options it asked for, and concurrent detections
+run one at a time. Code that calls the C functions of `DynlibC.h` directly must serialise
+them itself.
 
 ## 5. Updating the Fortran code
 
@@ -72,7 +72,8 @@ tests, since upstream may change the argument lists the shim relies on.
 
 ## 6. Known pitfalls
 
-* **Configuration is shared between threads** (§4).
+* **Detections do not run in parallel** (§4), and direct callers of `DynlibC.h` must
+  serialise their calls.
 * **Front detection is not chart quality** (see the README); do not offer it as a finished
   product.
 * **Grid spacings are double spacings in metres** (§3). Passing the plain spacing doubles
