@@ -157,7 +157,7 @@ std::vector<FrontLine> detectFrontsMaxGrad(const Fmi::Matrix<double>& field,
   std::vector<double> off(static_cast<std::size_t>(3) * nf);
 
   {
-    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    const std::scoped_lock lock(fortran_mutex());
     dynlib_detect_fronts_maxgrad(nx, ny, no, nf,
                                  &field(0, 0), &u(0, 0), &v(0, 0),
                                  &dx(0, 0), &dy(0, 0),
@@ -188,7 +188,7 @@ std::vector<FrontLine> detectFrontsMaxCurv(const Fmi::Matrix<double>& field,
   std::vector<double> off(static_cast<std::size_t>(3) * nf);
 
   {
-    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    const std::scoped_lock lock(fortran_mutex());
     dynlib_detect_fronts_maxcurv(nx, ny, no, nf,
                                  &field(0, 0), &u(0, 0), &v(0, 0),
                                  &dx(0, 0), &dy(0, 0),
@@ -334,7 +334,7 @@ RwbResult detectRossbyWaveBreakingGradRev(const Fmi::Matrix<double>& field,
   const double* mask_ptr = (mask != nullptr ? &(*mask)(0, 0) : &mask_all(0, 0));
 
   {
-    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    const std::scoped_lock lock(fortran_mutex());
     dynlib_detect_rwb_grad_rev(nx, ny,
                                &field(0, 0), mask_ptr, latitudes.data(),
                                options.ddy_thres,
@@ -431,7 +431,7 @@ CycloneResult detectCyclonesByContour(const Fmi::Matrix<double>& msl,
   std::vector<double> meta(static_cast<std::size_t>(5) * static_cast<std::size_t>(nn), 0.0);
 
   {
-    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    const std::scoped_lock lock(fortran_mutex());
     dynlib_detect_cyclones(nx, ny, nn,
                            &msl(0, 0),
                            sorted.sorted_values.data(),
@@ -501,7 +501,7 @@ BlobResult detectPrecipitationBlobs(const Fmi::Matrix<double>& precip,
   std::vector<double> meta(static_cast<std::size_t>(5) * static_cast<std::size_t>(nn), 0.0);
 
   {
-    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    const std::scoped_lock lock(fortran_mutex());
     dynlib_detect_blobs(nx, ny, nn,
                         &precip(0, 0),
                         sorted.sorted_values.data(),
@@ -543,7 +543,7 @@ Fmi::Matrix<double> blockingIndicator(const Fmi::Matrix<double>& field,
 
   Fmi::Matrix<double> out(nx, ny);
   {
-    const std::lock_guard<std::mutex> lock(fortran_mutex());
+    const std::scoped_lock lock(fortran_mutex());
     dynlib_block_indicator(nx, ny,
                            &field(0, 0), &dx(0, 0), &dy(0, 0),
                            &out(0, 0));
