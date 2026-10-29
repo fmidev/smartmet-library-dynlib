@@ -8,7 +8,7 @@ DEFINES = -DUNIX -D_REENTRANT
 # macgyver is used only for the header-only Fmi::Matrix template.
 REQUIRES :=
 
-include $(shell smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
+include $(or $(PREFIX),$(shell smartbuildcfg --prefix))/share/smartmet/devel/makefile.inc
 
 # Fortran sources are vendored under third_party/dynlib/. The compile
 # order below respects the module USE graph: kind -> const -> config ->
